@@ -5,6 +5,7 @@ const Controller = () => {
   const DEAD_ZONE = 20; // px distance threshold
 
   const connectToCar = () => {
+    console.log(window.location.host)
     if (window.NchatBridge && window.NchatBridge.connectToCar) {
       window.NchatBridge.connectToCar();
       console.log("🔗 Requested native bridge to connect to car");
