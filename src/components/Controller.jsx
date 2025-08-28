@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import nipplejs from "nipplejs";
 
 const Controller = () => {
   const DEAD_ZONE = 20; // px distance threshold
-  const [bridgeReady, setBridgeReady] = useState(false);
 
   const connectToCar = () => {
-    if (window.NchatBridge?.connectToCar) {
+    console.log(window.location.host)
+    if (window.NchatBridge && window.NchatBridge.connectToCar) {
       window.NchatBridge.connectToCar();
       console.log("🔗 Requested native bridge to connect to car");
     } else {
@@ -15,7 +15,7 @@ const Controller = () => {
   };
 
   const sendCommand = (command) => {
-    if (window.NchatBridge?.sendCommand) {
+    if (window.NchatBridge && window.NchatBridge.sendCommand) {
       window.NchatBridge.sendCommand(command);
       console.log(`📤 Sent command: ${command}`);
     } else {
@@ -24,69 +24,60 @@ const Controller = () => {
   };
 
   useEffect(() => {
-    // 🔎 Poll until NchatBridge is injected by Android
-    const waitForBridge = setInterval(() => {
-      if (window.NchatBridge) {
-        console.log("✅ NchatBridge available");
-        setBridgeReady(true);
+    const zone = document.getElementById("joystick");
+    const joystick = nipplejs.create({
+      zone,
+      mode: "static",
+      position: { left: "50%", top: "50%" },
+      color: "blue",
+      size: 150,
+    });
 
-        // ✅ Setup joystick once bridge exists
-        const zone = document.getElementById("joystick");
-        const joystick = nipplejs.create({
-          zone,
-          mode: "static",
-          position: { left: "50%", top: "50%" },
-          color: "blue",
-          size: 150,
-        });
+    joystick.on("move", (evt, data) => {
+      if (!data.direction) return;
 
-        joystick.on("move", (evt, data) => {
-          if (!data.direction) return;
-          if (data.distance < DEAD_ZONE) {
-            sendCommand("stop");
-            return;
-          }
-
-          const { angle } = data.direction;
-          switch (angle) {
-            case "up":
-              sendCommand("forward");
-              break;
-            case "down":
-              sendCommand("backward");
-              break;
-            case "left":
-              sendCommand("left");
-              break;
-            case "right":
-              sendCommand("right");
-              break;
-            case "up-left":
-              sendCommand("forward_left");
-              break;
-            case "up-right":
-              sendCommand("forward_right");
-              break;
-            case "down-left":
-              sendCommand("backward_left");
-              break;
-            case "down-right":
-              sendCommand("backward_right");
-              break;
-            default:
-              break;
-          }
-        });
-
-        joystick.on("end", () => {
-          sendCommand("stop");
-        });
-
-        clearInterval(waitForBridge); // stop polling
+      // ✅ Apply dead zone
+      if (data.distance < DEAD_ZONE) {
+        sendCommand("stop");
+        return;
       }
-    }, 500);
 
-    return () => clearInterval(waitForBridge);
+      const { angle } = data.direction;
+      console.log("🎮 Joystick direction:", angle, "distance:", data.distance);
+
+      switch (angle) {
+        case "up":
+          sendCommand("forward");
+          break;
+        case "down":
+          sendCommand("backward");
+          break;
+        case "left":
+          sendCommand("left");
+          break;
+        case "right":
+          sendCommand("right");
+          break;
+        case "up-left":
+          sendCommand("forward_left");
+          break;
+        case "up-right":
+          sendCommand("forward_right");
+          break;
+        case "down-left":
+          sendCommand("backward_left");
+          break;
+        case "down-right":
+          sendCommand("backward_right");
+          break;
+        default:
+          break;
+      }
+    });
+
+    joystick.on("end", () => {
+      sendCommand("stop");
+    });
   }, []);
 
   return (
@@ -94,14 +85,9 @@ const Controller = () => {
       {/* Connect Button */}
       <button
         onClick={connectToCar}
-        disabled={!bridgeReady}
-        className={`px-6 py-3 rounded-xl shadow-md transition ${
-          bridgeReady
-            ? "bg-blue-600 text-white hover:bg-blue-700"
-            : "bg-gray-400 text-gray-200 cursor-not-allowed"
-        }`}
+        className="px-6 py-3 bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 transition"
       >
-        {bridgeReady ? "🔗 Connect to Car" : "⏳ Waiting for Bridge..."}
+        🔗 Connect to Car
       </button>
 
       {/* Joystick */}
