@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import nipplejs from "nipplejs";
 
 const Controller = () => {
+  const DEAD_ZONE = 20; // px distance threshold
+
   const connectToCar = () => {
     if (window.NchatBridge && window.NchatBridge.connectToCar) {
       window.NchatBridge.connectToCar();
@@ -21,56 +23,59 @@ const Controller = () => {
   };
 
   useEffect(() => {
-    // === Left Joystick (Forward/Backward) ===
-    const leftZone = document.getElementById("joystick-left");
-    const leftJoystick = nipplejs.create({
-      zone: leftZone,
-      mode: "static",
-      position: { left: "50%", top: "50%" }, // center inside its zone
-      color: "blue",
-      size: 120,
-    });
-
-    leftJoystick.on("move", (evt, data) => {
-      
-      console.log("🎮 Left joystick raw data:", data);
-      if (data.direction) {
-        if (data.direction.angle === "up") {
-          sendCommand("forward");
-        } else if (data.direction.angle === "down") {
-          sendCommand("backward");
-        }
-      }
-    });
-
-    leftJoystick.on("end", () => {
-      sendCommand("stop");
-    });
-
-    // === Right Joystick (Left/Right Steering) ===
-    const rightZone = document.getElementById("joystick-right");
-    const rightJoystick = nipplejs.create({
-
-      zone: rightZone,
+    const zone = document.getElementById("joystick");
+    const joystick = nipplejs.create({
+      zone,
       mode: "static",
       position: { left: "50%", top: "50%" },
-      color: "red",
-      size: 120,
+      color: "blue",
+      size: 150,
     });
 
-    rightJoystick.on("move", (evt, data) => {
-      console.log("🎮 Right joystick raw data:", data);
-      if (data.direction) {
-        if (data.direction.angle === "left") {
+    joystick.on("move", (evt, data) => {
+      if (!data.direction) return;
+
+      // ✅ Apply dead zone
+      if (data.distance < DEAD_ZONE) {
+        sendCommand("stop");
+        return;
+      }
+
+      const { angle } = data.direction;
+      console.log("🎮 Joystick direction:", angle, "distance:", data.distance);
+
+      switch (angle) {
+        case "up":
+          sendCommand("forward");
+          break;
+        case "down":
+          sendCommand("backward");
+          break;
+        case "left":
           sendCommand("left");
-        } else if (data.direction.angle === "right") {
+          break;
+        case "right":
           sendCommand("right");
-        }
+          break;
+        case "up-left":
+          sendCommand("forward_left");
+          break;
+        case "up-right":
+          sendCommand("forward_right");
+          break;
+        case "down-left":
+          sendCommand("backward_left");
+          break;
+        case "down-right":
+          sendCommand("backward_right");
+          break;
+        default:
+          break;
       }
     });
 
-    rightJoystick.on("end", () => {
-      sendCommand("straight");
+    joystick.on("end", () => {
+      sendCommand("stop");
     });
   }, []);
 
@@ -84,19 +89,9 @@ const Controller = () => {
         🔗 Connect to Car
       </button>
 
-      {/* Two Joysticks Side by Side */}
-      <div className="flex justify-between w-full px-8 mt-12">
-        {/* Left Joystick */}
-        <div
-          id="joystick-left"
-          className="w-40 h-40 bg-gray-200 rounded-full relative shadow-inner"
-        ></div>
-
-        {/* Right Joystick */}
-        <div
-          id="joystick-right"
-          className="w-40 h-40 bg-gray-200 rounded-full relative shadow-inner"
-        ></div>
+      {/* Joystick */}
+      <div className="mt-12 w-48 h-48 bg-gray-200 rounded-full relative shadow-inner">
+        <div id="joystick" className="w-full h-full"></div>
       </div>
     </div>
   );
